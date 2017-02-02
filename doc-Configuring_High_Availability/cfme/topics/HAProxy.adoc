@@ -79,7 +79,7 @@ Keepalived uses VRRP (Virtual Redundancy Router Protocol). VRRP communication be
 ------
 [root@cf-hap1 ~]# yum install keepalived -y
 
-[root@cf-hap2 haproxy]# cat /etc/keepalived/keepalived.conf
+[root@cf-hap1 haproxy]# cat /etc/keepalived/keepalived.conf
 vrrp_script chk_haproxy {
 script "killall -0 haproxy" # check the haproxy process
 interval 2 # every 2 seconds
@@ -174,7 +174,54 @@ net.ipv4.ip_nonlocal_bind = 1
 . Configure the appropriate IPs for load balancing as follows:
 +
 ------
-[root@cf-haproxy ~]# cat /etc/haproxy/haproxy.cfg
+[root@cf-hap1 ~]# cat /etc/haproxy/haproxy.cfg
+global
+    log                 127.0.0.1 local0
+    chroot              /var/lib/haproxy
+    pidfile             /var/run/haproxy.pid
+    maxconn         4000
+    user                haproxy
+    group               haproxy
+    daemon
+defaults
+    mode                        http
+    log                         global
+    option                      httplog
+    option                      dontlognull
+    option             http-server-close
+    option     forwardfor       except 127.0.0.0/8
+    option                      redispatch
+    retries                     3
+    timeout http-request    10s
+    timeout queue           1m
+    timeout connect         10s
+    timeout client              1m
+    timeout server          1m
+    timeout http-keep-alive     10s
+    timeout check           10s
+# Cloud Forms Management UI URL
+listen apache
+  bind 10.19.137.135:80
+  mode tcp
+  balance roundrobin
+  server cf-ha1 10.19.137.130:80 check inter 1s
+  server cf-ha2 10.19.137.129:80  check inter 1s
+#
+listen apache-443
+  bind 10.19.137.135:443
+  mode tcp
+  balance roundrobin
+  server cf-ha1 10.19.137.130:443 check inter 1s
+  server cf-ha2 10.19.137.129:443  check inter 1s
+#
+listen apache-8443
+  bind 10.19.137.135:8443
+  mode tcp
+  balance roundrobin
+  server cf-ha1 10.19.137.130:8443 check inter 1s
+  server cf-ha2 10.19.137.129:8443  check inter 1s
+
+[root@cf-hap2 ~]# cat /etc/haproxy/haproxy.cfg
 global
     log                 127.0.0.1 local0
     chroot              /var/lib/haproxy
